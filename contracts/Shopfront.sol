@@ -57,7 +57,7 @@ contract Shopfront {
         uint64 currentStock = product.stock;
         uint64 newStock = currentStock + additionalStock;
 
-        require(newStock >= currentStock);
+        assert(newStock >= currentStock);
 
         LogStockAdded(id, additionalStock);
         product.stock = newStock;
@@ -71,7 +71,7 @@ contract Shopfront {
         uint64 price = product.price;
         uint64 stock = product.stock;
         
-	require(msg.value >= price);
+	    require(msg.value >= price);
         require(stock > 0); //Simulatenously checks that there is stock and that products[id] exists
 
         LogProductPurchased(id, msg.sender);
