@@ -2,7 +2,7 @@ pragma solidity 0.4.15;
 
 contract Shopfront {
     struct Product {
-        uint64 price;
+        uint128 price;
         uint64 stock;
     }
 
@@ -25,7 +25,7 @@ contract Shopfront {
         owner = msg.sender;
     }
 
-    function createProduct(uint64 price, uint64 stock, uint64 id)
+    function createProduct(uint128 price, uint64 stock, uint64 id)
       public
       onlyOwner
     {
@@ -71,14 +71,10 @@ contract Shopfront {
         uint64 price = product.price;
         uint64 stock = product.stock;
         
-	    require(msg.value >= price);
+        require(msg.value == price); //For simplicity, don't allow overpaying
         require(stock > 0); //Simulatenously checks that there is stock and that products[id] exists
 
         LogProductPurchased(id, msg.sender);
         product.stock -= 1;
-
-        if(msg.value > price) {
-            msg.sender.transfer(msg.value - price);
-        }
     }
 }
