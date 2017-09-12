@@ -10,9 +10,9 @@ contract Shopfront {
     event LogStockAdded(uint64 indexed id, uint64 indexed stockAdded);
     event LogProductPurchased(uint64 indexed id, address indexed purchaser);
 
-    address internal owner;
+    address public owner;
     mapping(uint64 => Product) public products;
-    uint64[] ids;
+    uint64[] public ids;
 
     modifier onlyOwner
     {
@@ -46,7 +46,7 @@ contract Shopfront {
         owner.transfer(this.balance);
     }
 
-    function updateStock(uint64 id, uint64 additionalStock)
+    function addStock(uint64 id, uint64 additionalStock)
       public
       onlyOwner
     {
@@ -68,7 +68,7 @@ contract Shopfront {
       public
     {
         Product storage product = products[id];
-        uint64 price = product.price;
+        uint128 price = product.price;
         uint64 stock = product.stock;
         
         require(msg.value == price); //For simplicity, don't allow overpaying
@@ -76,5 +76,13 @@ contract Shopfront {
 
         LogProductPurchased(id, msg.sender);
         product.stock -= 1;
+    }
+
+    function getIdsLength()
+      public
+      constant
+      returns(uint256)
+    {
+        return ids.length;
     }
 }
