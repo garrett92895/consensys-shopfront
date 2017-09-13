@@ -1,3 +1,6 @@
+//TODO divide products list from header
+//TODO divide each product in list
+//TODO create product form
 import React, { Component } from 'react'
 import ShopfrontContract from '../build/contracts/Shopfront.json'
 import getWeb3 from './utils/getWeb3'
@@ -14,13 +17,30 @@ class Product extends Component {
     this.state = {
 
     }
+
+    this.handlePurchase = this.handlePurchase.bind(this)
+    this.handleUpdateStock = this.handleUpdateStock.bind(this)
+  }
+
+  handlePurchase() {
+    this.props.handlePurchase(this.props.id)
+  }
+
+  handleUpdateStock() {
+    this.props.handleUpdateStock(this.props.id)
   }
 
   render() {
+    let updateStockButton = ""
+    if(this.props.isOwner) {
+      updateStockButton = (<button onClick={this.handleUpdateStock}>Increase Stock by 1</button>)
+    }
+
     return (
       <div>
         <p>Id: {this.props.id} Price: {this.props.price} Stock: {this.props.stock}</p>
-        <button onClick={this.props.handeClick}>Purchase</button>
+        <button onClick={this.handlePurchase}>Purchase</button>
+        {updateStockButton}
       </div>
     )
   }
@@ -39,11 +59,11 @@ class App extends Component {
     }
 
     this.updateProducts = this.updateProducts.bind(this)
+    this.handlePurchase = this.handlePurchase.bind(this)
+    this.handleUpdateStock = this.handleUpdateStock.bind(this)
   }
 
   componentWillMount() {
-      //TODO setup watchers
-      //TODO setup sublime environment if necessary
     getWeb3
     .then(results => {
       this.setState({
@@ -65,12 +85,37 @@ class App extends Component {
         })
       })
       .then(() => this.updateProducts())
+      .then(() => this.setWatchers())
 
     })
     .catch(error => {
       console.log(error)
       console.log('Error finding web3.')
     })
+  }
+
+  instantiateContract() {
+    const contract = require('truffle-contract')
+    const shopfront = contract(ShopfrontContract)
+    shopfront.setProvider(this.state.web3.currentProvider)
+
+    return shopfront.deployed()
+    .then((instance) => {
+      this.setState({
+        shopfrontInstance: instance
+      })
+    })
+  }
+
+  setWatchers() {
+    this.state.shopfrontInstance.LogProductCreation()
+    .watch(this.updateProducts)
+
+    this.state.shopfrontInstance.LogStockAdded()
+    .watch(this.updateProducts)
+
+    this.state.shopfrontInstance.LogProductPurchased()
+    .watch(this.updateProducts)
   }
 
   updateProducts() {
@@ -95,27 +140,27 @@ class App extends Component {
     .then(products => this.setState({products: products}))
   }
 
-  instantiateContract() {
-    const contract = require('truffle-contract')
-    const shopfront = contract(ShopfrontContract)
-    shopfront.setProvider(this.state.web3.currentProvider)
+  handlePurchase(id) {
+      this.state.shopfrontInstance...
+//TODO implement
+  }
 
-    return shopfront.deployed()
-    .then((instance) => {
-      this.setState({
-        shopfrontInstance: instance
-      })
-    })
+  handleUpdateStock(id) {
+
   }
 
   render() {
     let productComponents = this.state.products.map(product => {
       return (
         <Product 
+          isOwner={this.state.account === this.state.ownerAccount}
           key={product[2].toString()}
           price={product[0].toString()}
           stock={product[1].toString()}
-          id={product[2].toString()}/>
+          id={product[2].toString()}
+          handlePurchase={this.handlePurchase}
+          handleUpdateStock={this.handleUpdateStock}
+        />
       )
     })
 
