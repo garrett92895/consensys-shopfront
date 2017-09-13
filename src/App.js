@@ -7,6 +7,25 @@ import './css/open-sans.css'
 import './css/pure-min.css'
 import './App.css'
 
+class Product extends Component {
+  constructor(props) {
+    super(props)
+
+    this.state = {
+
+    }
+  }
+
+  render() {
+    return (
+      <div>
+        <p>Id: {this.props.id} Price: {this.props.price} Stock: {this.props.stock}</p>
+        <button onClick={this.props.handeClick}>Purchase</button>
+      </div>
+    )
+  }
+}
+
 class App extends Component {
   constructor(props) {
     super(props)
@@ -16,11 +35,15 @@ class App extends Component {
       account: null,
       ownerAccount: null,
       shopfrontInstance: null,
-      products: null
+      products: []
     }
+
+    this.updateProducts = this.updateProducts.bind(this)
   }
 
   componentWillMount() {
+      //TODO setup watchers
+      //TODO setup sublime environment if necessary
     getWeb3
     .then(results => {
       this.setState({
@@ -31,7 +54,7 @@ class App extends Component {
         this.setState({
           account: accounts[0]
         })
-      });
+      })
 
       this.instantiateContract()
       .then(() => {
@@ -41,28 +64,35 @@ class App extends Component {
           })
         })
       })
-      .then(() => this.state.shopfrontInstance.getIdsLength())
-      .then(idsLength => {
-        let promises = []
-        for(let i = 0; i < idsLength.toNumber(); i++) {
-          promises.push(this.state.shopfrontInstance.ids(i))
-        }
-        return Promise.all(promises)
-      })
-      .then(ids => {
-        let promises = []
-        for(let i = 0; i < ids.length; i++) {
-          promises.push(this.state.shopfrontInstance.products(ids[i]))
-        }
-        return Promise.all(promises)
-      })
-      .then(products => this.setState({products: products}))
+      .then(() => this.updateProducts())
 
     })
     .catch(error => {
       console.log(error)
       console.log('Error finding web3.')
     })
+  }
+
+  updateProducts() {
+    return this.state.shopfrontInstance.getIdsLength()
+    .then(idsLength => {
+      let promises = []
+      for(let i = 0; i < idsLength.toNumber(); i++) {
+        promises.push(this.state.shopfrontInstance.ids(i))
+      }
+      return Promise.all(promises)
+    })
+    .then(ids => {
+      let promises = ids.map(id => {
+        return this.state.shopfrontInstance.products(id)
+        .then(product => {
+          product[2] = id
+          return product
+        })
+      })
+      return Promise.all(promises)
+    })
+    .then(products => this.setState({products: products}))
   }
 
   instantiateContract() {
@@ -79,7 +109,18 @@ class App extends Component {
   }
 
   render() {
-      console.log(this.state.products)
+    let productComponents = this.state.products.map(product => {
+      return (
+        <Product 
+          key={product[2].toString()}
+          price={product[0].toString()}
+          stock={product[1].toString()}
+          id={product[2].toString()}/>
+      )
+    })
+
+    console.log(productComponents)
+
     return (
       <div className="App">
         <nav className="navbar pure-menu pure-menu-horizontal">
@@ -92,12 +133,12 @@ class App extends Component {
               <p>If your contracts compiled and migrated successfully, below will show a stored value of 5 (by default).</p>
               <p>Your account is: {this.state.account}</p>
               <p>The owner account is: {this.state.ownerAccount}</p>
-              <p>{this.state.products}</p>
+              {productComponents}
             </div>
           </div>
         </main>
       </div>
-    );
+    )
   }
 }
 
