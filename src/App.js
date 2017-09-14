@@ -1,6 +1,6 @@
 //TODO divide products list from header
 //TODO divide each product in list
-//TODO create product form
+//TODO withdraw function
 import React, { Component } from 'react'
 import ShopfrontContract from '../build/contracts/Shopfront.json'
 import getWeb3 from './utils/getWeb3'
@@ -9,6 +9,55 @@ import './css/oswald.css'
 import './css/open-sans.css'
 import './css/pure-min.css'
 import './App.css'
+
+class CreateProductForm extends Component {
+  constructor(props) {
+    super(props)
+    this.state = {
+      id: '',
+      price: '',
+	  stock: ''
+    }
+
+    this.handleIdChange = this.handleIdChange.bind(this)
+    this.handlePriceChange = this.handlePriceChange.bind(this)
+    this.handleStockChange = this.handleStockChange.bind(this)
+    this.handleSubmit = this.handleSubmit.bind(this)
+  }
+
+  handleIdChange(event) {
+    this.setState({id: event.target.value})
+  }
+
+  handlePriceChange(event) {
+    this.setState({price: event.target.value})
+  }
+
+  handleStockChange(event) {
+    this.setState({stock: event.target.value})
+  }
+
+  handleSubmit(event) {
+    this.props.handleCreateProduct(this.state.id, this.state.price, this.state.stock)
+    event.preventDefault()
+  }
+
+  render() {
+    return (
+      <form onSubmit={this.handleSubmit}>
+        <label>
+          Id:
+          <input type="number" value={this.state.id} onChange={this.handleIdChange} />
+          Price:
+          <input type="number" value={this.state.price} onChange={this.handlePriceChange} />
+          Stock:
+          <input type="number" value={this.state.stock} onChange={this.handleStockChange} />
+        </label>
+        <input type="submit" value="Submit" />
+      </form>
+    );
+  }
+}
 
 class Product extends Component {
   constructor(props) {
@@ -32,14 +81,19 @@ class Product extends Component {
 
   render() {
     let updateStockButton = ""
+    let purchaseButton = ""
     if(this.props.isOwner) {
       updateStockButton = (<button onClick={this.handleUpdateStock}>Increase Stock by 1</button>)
+    }
+
+    if(this.props.stock > 0) {
+      purchaseButton = (<button onClick={this.handlePurchase}>Purchase</button>)
     }
 
     return (
       <div>
         <p>Id: {this.props.id} Price: {this.props.price} Stock: {this.props.stock}</p>
-        <button onClick={this.handlePurchase}>Purchase</button>
+        {purchaseButton}
         {updateStockButton}
       </div>
     )
@@ -54,6 +108,8 @@ class App extends Component {
       web3: null,
       account: null,
       ownerAccount: null,
+      contractAddress: null,
+      contractBalance: null,
       shopfrontInstance: null,
       products: []
     }
@@ -61,6 +117,7 @@ class App extends Component {
     this.updateProducts = this.updateProducts.bind(this)
     this.handlePurchase = this.handlePurchase.bind(this)
     this.handleUpdateStock = this.handleUpdateStock.bind(this)
+    this.handleCreateProduct = this.handleCreateProduct.bind(this)
   }
 
   componentWillMount() {
@@ -84,8 +141,10 @@ class App extends Component {
           })
         })
       })
-      .then(() => this.updateProducts())
       .then(() => this.setWatchers())
+      .then(() => this.updateProducts())
+      .then(() => this.setState({contractAddress: this.state.shopfrontInstance.address}))
+      .then(() => this.setState({contractBalance: this.state.web3.eth.getBalance(this.state.contractAddress).toString()}))
 
     })
     .catch(error => {
@@ -141,12 +200,36 @@ class App extends Component {
   }
 
   handlePurchase(id) {
-      this.state.shopfrontInstance...
-//TODO implement
+    let shopfrontInstance = this.state.shopfrontInstance
+    let account = this.state.account
+
+    return shopfrontInstance.products(id)
+    .then(product => shopfrontInstance.purchaseItem(id, {from:account, value:product[0]}))
   }
 
   handleUpdateStock(id) {
+    let shopfrontInstance = this.state.shopfrontInstance
+    let account = this.state.account
 
+    if(account === this.state.ownerAccount) {
+      return shopfrontInstance.products(id)
+      .then(product => shopfrontInstance.addStock(id, 1, {from:account}))
+    }
+  }
+
+  handleCreateProduct(id, price, stock) {
+    let shopfrontInstance = this.state.shopfrontInstance
+    let account = this.state.account
+    console.log(account)
+
+    if(account === this.state.ownerAccount) {
+      return shopfrontInstance.createProduct(price, stock, id, {from:account})
+      .then(tx => console.log(tx))
+      .catch((error) => {
+        console.log(error)
+        alert("Error creating product. Make sure id doesn't already exist and that price and stock are valid")   
+      })
+    }
   }
 
   render() {
@@ -164,7 +247,15 @@ class App extends Component {
       )
     })
 
-    console.log(productComponents)
+    let createProductForm;
+    if(this.state.account === this.state.ownerAccount) {
+        createProductForm = (
+          <div>
+          <h3>Create new product</h3>
+          <CreateProductForm handleCreateProduct={this.handleCreateProduct} />
+          </div>
+        )
+    }
 
     return (
       <div className="App">
@@ -175,9 +266,12 @@ class App extends Component {
         <main className="container">
           <div className="pure-g">
             <div className="pure-u-1-1">
-              <p>If your contracts compiled and migrated successfully, below will show a stored value of 5 (by default).</p>
+              <h3>Info</h3>
               <p>Your account is: {this.state.account}</p>
               <p>The owner account is: {this.state.ownerAccount}</p>
+              <p>Contract balance: {this.state.contractBalance} wei</p>
+              {createProductForm}
+              <h3>Product List</h3>
               {productComponents}
             </div>
           </div>
