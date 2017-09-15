@@ -1,6 +1,5 @@
 //TODO divide products list from header
 //TODO divide each product in list
-//TODO withdraw function
 import React, { Component } from 'react'
 import ShopfrontContract from '../build/contracts/Shopfront.json'
 import getWeb3 from './utils/getWeb3'
@@ -118,6 +117,8 @@ class App extends Component {
     this.handlePurchase = this.handlePurchase.bind(this)
     this.handleUpdateStock = this.handleUpdateStock.bind(this)
     this.handleCreateProduct = this.handleCreateProduct.bind(this)
+    this.withdraw = this.withdraw.bind(this)
+    this.updateBalance = this.updateBalance.bind(this)
   }
 
   componentWillMount() {
@@ -144,13 +145,22 @@ class App extends Component {
       .then(() => this.setWatchers())
       .then(() => this.updateProducts())
       .then(() => this.setState({contractAddress: this.state.shopfrontInstance.address}))
-      .then(() => this.setState({contractBalance: this.state.web3.eth.getBalance(this.state.contractAddress).toString()}))
+      .then(this.updateBalance)
 
     })
     .catch(error => {
       console.log(error)
       console.log('Error finding web3.')
     })
+  }
+
+  updateBalance() {
+    return this.setState({contractBalance: this.state.web3.eth.getBalance(this.state.contractAddress).toString()})
+  }
+
+  withdraw() {
+    return this.state.shopfrontInstance.withdraw({from: this.state.account})
+    .then(this.updateBalance)
   }
 
   instantiateContract() {
@@ -247,7 +257,7 @@ class App extends Component {
       )
     })
 
-    let createProductForm;
+    let createProductForm
     if(this.state.account === this.state.ownerAccount) {
         createProductForm = (
           <div>
@@ -255,6 +265,11 @@ class App extends Component {
           <CreateProductForm handleCreateProduct={this.handleCreateProduct} />
           </div>
         )
+    }
+
+    let withdrawButton
+    if(this.state.account === this.state.ownerAccount) {
+        withdrawButton = (<button onClick={this.withdraw}>Withdraw funds</button>)
     }
 
     return (
@@ -270,6 +285,7 @@ class App extends Component {
               <p>Your account is: {this.state.account}</p>
               <p>The owner account is: {this.state.ownerAccount}</p>
               <p>Contract balance: {this.state.contractBalance} wei</p>
+              {withdrawButton}
               {createProductForm}
               <h3>Product List</h3>
               {productComponents}
